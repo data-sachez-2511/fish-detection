@@ -6,3 +6,4 @@
 /.idea/vcs.xml
 /__pycache__/config.cpython-36.pyc
 /__pycache__/engine.cpython-36.pyc
+/coco_evaluate/__pycache__/coco_utils.cpython-36.pyc
