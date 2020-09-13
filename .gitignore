@@ -4,3 +4,5 @@
 /.idea/misc.xml
 /.idea/modules.xml
 /.idea/vcs.xml
+/__pycache__/config.cpython-36.pyc
+/__pycache__/engine.cpython-36.pyc
