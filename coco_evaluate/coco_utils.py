@@ -7,7 +7,7 @@ import torchvision
 from pycocotools import mask as coco_mask
 from pycocotools.coco import COCO
 
-from .transforms import transforms_boxes as T
+from ..transforms import transforms_boxes as T
 
 
 class FilterAndRemapCocoCategories(object):
