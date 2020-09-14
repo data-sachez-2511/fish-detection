@@ -5,6 +5,8 @@ from torch.autograd import Variable
 from .layers.functions.prior_box import PriorBox
 from .layers.modules.l2norm import L2Norm
 from .layers.functions.detection import Detect
+from .layers.modules.multibox_loss import MultiBoxLoss
+from ...config import Cfg as cfg
 import os
 
 
@@ -207,7 +209,26 @@ def build_ssd(phase, size=300, num_classes=21):
 
 
 class SSD300(nn.Module):
-    def __init__(self, num_classes, phase='Train', pretrained=None):
+    def __init__(self, num_classes, phase='Train', pretrained=None, device='cpu'):
         super(SSD300, self).__init__()
         self.phase = phase
         self.net = build_ssd(phase, num_classes=num_classes)
+        self.device = device
+        self.loss = MultiBoxLoss(num_classes, 0.5, True, 0, True, 3, 0.5, False, False if device == 'cpu' else True)
+
+    def forward(self, images, targets=None):
+        outputs = self.net(torch.stack(images).to(self.device))
+        if self.phase == 'Train':
+            loss_l, loss_c = self.loss(outputs, targets)
+            return {'loss_l': loss_l, 'loss_c': loss_c}
+        else:
+            detections = outputs
+            print(detections)
+            return None
+            dets = []
+            for i in range(detections.shape[0]):
+                for j in range(detections.shape[1]):
+                    if detections[i][j][0] >= cfg.confidence_score:
+                        pass
+            images_size = torch.tensor(targets['images_size'])
+            # return [{'boxes': boxes[i], 'labels': labels[i], 'scores': scores[i]} for i in range(len(boxes))]
