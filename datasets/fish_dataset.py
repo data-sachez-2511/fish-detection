@@ -37,7 +37,7 @@ class FishDataset(Dataset):
         image = cv2.imread(self.images_paths[idx])
         h, w, c = image.shape
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = image
+        image = image.copy()
         image_name = self.images_names[idx]
         boxes = self.annotations[image_name].copy()
         np.clip(boxes[:, :2], 1, None, boxes[:, :2])

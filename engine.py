@@ -5,11 +5,14 @@ import torch
 
 import cv2
 
+import numpy as np
+
 import torchvision.models.detection.mask_rcnn
 
 from .coco_evaluate.coco_utils import get_coco_api_from_dataset
 from .coco_evaluate.coco_eval import CocoEvaluator
 from . import utils
+from .config import Cfg as cfg
 
 
 @torch.no_grad()
@@ -29,19 +32,24 @@ def generate_samples(model, dataloader, device, num_images, epoch, writer):
             true_box = true_boxes[i]
             true_points = [[(box[0], box[1]), (box[2], box[3])] for box in true_box]
             for true_point in true_points:
-                image = cv2.rectangle(image, true_point[0], true_point[1], (255, 0, 0), 2)
-            for index in range(len(outputs)):
-                boxes = outputs[index]['boxes']
-                for ii in range(len(boxes)):
-                    score = outputs[index]['scores'][ii]
-                    if score < 0.5:
-                        break
-                    point = [(boxes[ii][0].astype(int), boxes[ii][1].astype(int)),
-                             (boxes[ii][2].astype(int), boxes[ii][3].astype(int))]
-                    image = cv2.rectangle(image, point[0], point[1], (255, 255, 0), 2)
-                    cv2.putText(image, str(score), (point[0][0], point[0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9,
-                                (255, 255, 0), 2)
-            writer.add_image('{}-'.format(epoch) + name, image)
+                image = cv2.UMat.get(cv2.rectangle(cv2.UMat(image), true_point[0], true_point[1], (255, 0, 0), 2))
+            boxes = outputs[i]['boxes']
+            for ii in range(len(boxes)):
+                score = outputs[i]['scores'][ii]
+                if outputs[i]['labels'][ii] == 0:
+                    continue
+                if score < 0.5:
+                    break
+                point = [(boxes[ii][0].astype(int), boxes[ii][1].astype(int)),
+                         (boxes[ii][2].astype(int), boxes[ii][3].astype(int))]
+                image = cv2.rectangle(image, point[0], point[1], (255, 255, 0), 2)
+                cv2.putText(image, '{}: {}'.format(str(outputs[i]['labels'][ii]), str(score)),
+                            (point[0][0], point[0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9,
+                            (255, 255, 0), 2)
+            if isinstance(image, type(np.array([0]))):
+                writer.add_image('{}-'.format(epoch) + name, image.transpose(2, 0, 1))
+            else:
+                writer.add_image('{}-'.format(epoch) + name, cv2.UMat.get(image).transpose(2, 0, 1))
             count_images += 1
             if count_images == num_images:
                 return
