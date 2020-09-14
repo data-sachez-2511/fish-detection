@@ -16,3 +16,5 @@ Cfg.test_dataset = 'D:\\Data\\fish\\datasets\\fish_in_the_wild\\test'
 
 Cfg.train_labels = 'D:\\Data\\fish\\datasets\\fish_in_the_wild\\train.txt'
 Cfg.test_labels = 'D:\\Data\\fish\\datasets\\fish_in_the_wild\\test.txt'
+
+Cfg.variance = [0.1, 0.2]
