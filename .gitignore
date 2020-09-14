@@ -13,3 +13,5 @@
 /coco_evaluate/__pycache__/coco_eval.cpython-36.pyc
 /datasets/__pycache__/fish_dataset.cpython-36.pyc
 /transforms/__pycache__/transforms_boxes.cpython-36.pyc
+/models/ssd300/__pycache__/model.cpython-36.pyc
+/models/ssd300/__pycache__/utils.cpython-36.pyc
