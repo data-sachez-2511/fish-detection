@@ -8,6 +8,7 @@ import albumentations as A
 
 from torchvision.transforms import functional as F
 
+
 class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
@@ -91,7 +92,7 @@ class ResizeKeepDim(object):
     def __call__(self, image, target):
         h, w, c = image.shape
         if h > self.h and w > self.w:
-            rescale  = min(self.h / h, self.w / w)
+            rescale = min(self.h / h, self.w / w)
         elif h > self.h:
             rescale = self.h / h
         elif w > self.w:
@@ -100,16 +101,14 @@ class ResizeKeepDim(object):
             rescale = 1.0
         t_image = image.copy()
         if rescale < 1.0:
-            target['boxes'] *= rescale
+            target['boxes'] = target['boxes'] * rescale
             t_image = cv2.resize(t_image, (int(w * rescale), int(h * rescale)))
-        return self.add_padding_(t_image)
+        return self.add_padding_(t_image), target
 
     def add_padding_(self, image):
-        t_image = np.zeros(self.h, self.w, image.shape[2])
-        t_image[:image.shape[0], :image.shape[1],:] = t_image
+        t_image = np.zeros((self.h, self.w, image.shape[2]), dtype=np.uint8)
+        t_image[:image.shape[0], :image.shape[1], :] = image
         return t_image
-
-
 
 
 class ToTensor(object):
