@@ -11,6 +11,9 @@ from torch.utils.data import Dataset
 def collate(batch):
     return [_[0] for _ in batch], [_[1] for _ in batch]
 
+def collate_tensor(batch):
+    return torch.stack([_[0] for _ in batch]), [_[1] for _ in batch]
+
 
 class FishDataset(Dataset):
     def __init__(self, dataset_path, labels_path, transform):
