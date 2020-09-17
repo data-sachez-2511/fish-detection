@@ -23,7 +23,9 @@ def generate_samples(model, dataloader, device, num_images, epoch, writer):
         names = [_['name'] for _ in targets]
         true_boxes = [_['boxes'].long().numpy() for _ in targets]
         images = list(img.to(device) for img in images)
-        outputs = model(images)
+        targets = [{k: v.to(device) for k, v in t.items() if not k == 'name'} for t in targets]
+        outputs = model(images, targets)
+        targets = [{k: v.cpu() for k, v in t.items() if not k == 'name'} for t in targets]
         images = list(img.to('cpu').numpy() for img in images)
         outputs = [{k: v.to('cpu').numpy() for k, v in t.items()} for t in outputs]
         for i in range(len(images)):
@@ -33,7 +35,10 @@ def generate_samples(model, dataloader, device, num_images, epoch, writer):
             true_points = [[(box[0], box[1]), (box[2], box[3])] for box in true_box]
             for true_point in true_points:
                 image = cv2.UMat.get(cv2.rectangle(cv2.UMat(image), true_point[0], true_point[1], (255, 0, 0), 2))
-            boxes = outputs[i]['boxes']
+            # print(outputs[i]['boxes'])
+            # print(targets[i]['scale'].numpy())
+            boxes = outputs[i]['boxes'] * targets[i]['scale'].numpy()
+            # print(outputs[i])
             for ii in range(len(boxes)):
                 score = outputs[i]['scores'][ii]
                 if outputs[i]['labels'][ii] == 0:
@@ -47,9 +52,9 @@ def generate_samples(model, dataloader, device, num_images, epoch, writer):
                             (point[0][0], point[0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9,
                             (255, 255, 0), 2)
             if isinstance(image, type(np.array([0]))):
-                writer.add_image('{}-'.format(epoch) + name, image.transpose(2, 0, 1))
+                writer.add_image('epoch-{}/'.format(epoch) + name, image.transpose(2, 0, 1))
             else:
-                writer.add_image('{}-'.format(epoch) + name, cv2.UMat.get(image).transpose(2, 0, 1))
+                writer.add_image('epoch-{}/'.format(epoch) + name, cv2.UMat.get(image).transpose(2, 0, 1))
             count_images += 1
             if count_images == num_images:
                 return
@@ -145,10 +150,14 @@ def evaluate(model, data_loader, device, epoch, writer):
         images = list(img.to(device) for img in images)
         torch.cuda.synchronize()
         model_time = time.time()
-        outputs = model(images)
+        targets = [{k: v.to(device) for k, v in t.items() if not k == 'name'} for t in targets]
+        outputs = model(images, targets)
+        targets = [{k: v.cpu() for k, v in t.items() if not k == 'name'} for t in targets]
 
         outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
         model_time = time.time() - model_time
+        for i in range(len(targets)):
+            targets[i]['boxes'] = targets[i]['boxes'] / targets[i]['scale']
 
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
         evaluator_time = time.time()

@@ -73,7 +73,10 @@ class CocoEvaluator(object):
                 continue
 
             boxes = prediction["boxes"]
-            boxes = convert_to_xywh(boxes).tolist()
+            if boxes.shape[0] == 0:
+                boxes = []
+            else:
+                boxes = convert_to_xywh(boxes).tolist()
             scores = prediction["scores"].tolist()
             labels = prediction["labels"].tolist()
 
@@ -153,7 +156,10 @@ class CocoEvaluator(object):
 
 
 def convert_to_xywh(boxes):
-    xmin, ymin, xmax, ymax = boxes.unbind(1)
+    try:
+        xmin, ymin, xmax, ymax = boxes.unbind(1)
+    except Exception as e:
+        print(boxes)
     return torch.stack((xmin, ymin, xmax - xmin, ymax - ymin), dim=1)
 
 

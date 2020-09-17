@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 def collate(batch):
     return [_[0] for _ in batch], [_[1] for _ in batch]
 
+
 def collate_tensor(batch):
     return torch.stack([_[0] for _ in batch]), [_[1] for _ in batch]
 
@@ -51,6 +52,8 @@ class FishDataset(Dataset):
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)
         image_id = torch.tensor([idx])
         anno = {'name': image_name, 'boxes': boxes, 'iscrowd': iscrowd, 'image_id': image_id, 'area': area,
-                'labels': torch.ones(boxes.shape[0], dtype=torch.long), 'image_size': [image.shape[1], image.shape[0],
-                             image.shape[1], image.shape[0]]}
+                'labels': torch.ones(boxes.shape[0], dtype=torch.long),
+                'image_size': torch.tensor([image.shape[1], image.shape[0],
+                                            image.shape[1], image.shape[0]]),
+                'scale': torch.tensor(1.0)}
         return self.transform(image, anno)

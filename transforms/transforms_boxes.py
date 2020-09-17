@@ -102,6 +102,7 @@ class ResizeKeepDim(object):
         t_image = image.copy()
         if rescale < 1.0:
             target['boxes'] = target['boxes'] * rescale
+            target['scale'] = target['scale'] * rescale
             t_image = cv2.resize(t_image, (int(w * rescale), int(h * rescale)))
         return self.add_padding_(t_image), target
 
@@ -117,4 +118,5 @@ class ToTensor(object):
         if len(target['boxes']) == 0:
             return image, target
         target['boxes'] = torch.stack([torch.tensor(_) for _ in target['boxes']]).float()
+        target['labels'] = target['labels'][:target['boxes'].shape[0]]
         return image, target

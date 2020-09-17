@@ -31,8 +31,7 @@ class SSD(nn.Module):
         super(SSD, self).__init__()
         self.phase = phase
         self.num_classes = num_classes
-        # self.cfg = (coco, voc)[num_classes == 21]
-        self.priorbox = PriorBox(self.cfg)
+        self.priorbox = PriorBox(cfg)
         self.priors = Variable(self.priorbox.forward(), volatile=True)
         self.size = size
 
@@ -91,15 +90,14 @@ class SSD(nn.Module):
         for (x, l, c) in zip(sources, self.loc, self.conf):
             loc.append(l(x).permute(0, 2, 3, 1).contiguous())
             conf.append(c(x).permute(0, 2, 3, 1).contiguous())
-
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
         if self.phase == "test":
             output = self.detect(
-                loc.view(loc.size(0), -1, 4),                   # loc preds
+                loc.view(loc.size(0), -1, 4),  # loc preds
                 self.softmax(conf.view(conf.size(0), -1,
-                             self.num_classes)),                # conf preds
-                self.priors.type(type(x.data))                  # default boxes
+                                       self.num_classes)),  # conf preds
+                self.priors  # default boxes
             )
         else:
             output = (
@@ -114,7 +112,7 @@ class SSD(nn.Module):
         if ext == '.pkl' or '.pth':
             print('Loading weights into state dict...')
             self.load_state_dict(torch.load(base_file,
-                                 map_location=lambda storage, loc: storage))
+                                            map_location=lambda storage, loc: storage))
             print('Finished!')
         else:
             print('Sorry only .pth and .pkl files supported.')
@@ -154,7 +152,7 @@ def add_extras(cfg, i, batch_norm=False):
         if in_channels != 'S':
             if v == 'S':
                 layers += [nn.Conv2d(in_channels, cfg[k + 1],
-                           kernel_size=(1, 3)[flag], stride=2, padding=1)]
+                                     kernel_size=(1, 3)[flag], stride=2, padding=1)]
             else:
                 layers += [nn.Conv2d(in_channels, v, kernel_size=(1, 3)[flag])]
             flag = not flag
@@ -170,7 +168,7 @@ def multibox(vgg, extra_layers, cfg, num_classes):
         loc_layers += [nn.Conv2d(vgg[v].out_channels,
                                  cfg[k] * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(vgg[v].out_channels,
-                        cfg[k] * num_classes, kernel_size=3, padding=1)]
+                                  cfg[k] * num_classes, kernel_size=3, padding=1)]
     for k, v in enumerate(extra_layers[1::2], 2):
         loc_layers += [nn.Conv2d(v.out_channels, cfg[k]
                                  * 4, kernel_size=3, padding=1)]
@@ -209,26 +207,59 @@ def build_ssd(phase, size=300, num_classes=21):
 
 
 class SSD300(nn.Module):
-    def __init__(self, num_classes, phase='Train', pretrained=None, device='cpu'):
+    def __init__(self, num_classes, phase='train', pretrained=None, device='cpu'):
         super(SSD300, self).__init__()
         self.phase = phase
         self.net = build_ssd(phase, num_classes=num_classes)
         self.device = device
+        self.net.priors = self.net.priors.to(device)
         self.loss = MultiBoxLoss(num_classes, 0.5, True, 0, True, 3, 0.5, False, False if device == 'cpu' else True)
 
     def forward(self, images, targets=None):
         outputs = self.net(torch.stack(images).to(self.device))
-        if self.phase == 'Train':
-            loss_l, loss_c = self.loss(outputs, targets)
+        if self.phase == 'train':
+            sizes = [
+                torch.tensor([images[i].shape[2], images[i].shape[1], images[i].shape[2], images[i].shape[1]]).repeat(
+                    targets[i]['boxes'].shape[0], 1).to(self.device) for i in range(len(images))]
+            loss_l, loss_c = self.loss(outputs,
+                                       [torch.cat((t['boxes'] / sizes[i], t['labels'].unsqueeze(-1).float()), dim=1) for
+                                        i, t in enumerate(targets)])
             return {'loss_l': loss_l, 'loss_c': loss_c}
         else:
-            detections = outputs
-            print(detections)
-            return None
             dets = []
-            for i in range(detections.shape[0]):
-                for j in range(detections.shape[1]):
-                    if detections[i][j][0] >= cfg.confidence_score:
-                        pass
-            images_size = torch.tensor(targets['images_size'])
-            # return [{'boxes': boxes[i], 'labels': labels[i], 'scores': scores[i]} for i in range(len(boxes))]
+            for image_id in range(len(images)):
+                image_size = torch.tensor(
+                    [images[image_id].shape[2], images[image_id].shape[1], images[image_id].shape[2],
+                     images[image_id].shape[1]])
+                detections = outputs[image_id][1]
+                i = 0
+                boxes = []
+                labels = []
+                confs = []
+                while i < len(detections) and detections[i][0] >= cfg.confidence_score:
+                    labels.append(torch.tensor(1))
+                    confs.append(detections[i, 0].cpu())
+                    # print(detections[i, 1:])
+                    # print(image_size)
+                    # print('---------------------')
+                    # print(targets[image_id]['scale'])
+                    # print(detections[i, 1:])
+                    # print((detections[i, 1:] * image_size))
+                    # print((detections[i, 1:] * image_size) / targets[image_id]['scale'])
+                    # print(targets[image_id]['boxes'])
+                    # print('---------------------')
+                    pt = (detections[i, 1:] * image_size) / targets[image_id]['scale']
+                    box = torch.stack([pt[0], pt[1], pt[2], pt[3]])
+                    boxes.append(box.cpu())
+                    i += 1
+                if len(boxes) > 0:
+                    dets.append(
+                        {'boxes': torch.stack(boxes), 'labels': torch.stack(labels), 'scores': torch.stack(confs)})
+                else:
+                    dets.append({'boxes': torch.zeros(0), 'labels': torch.zeros(0), 'scores': torch.zeros(0)})
+            # print('-------------------------')
+            # print(dets)
+            # print('............................')
+            # print(targets)
+            # print('-------------------------')
+            return dets
