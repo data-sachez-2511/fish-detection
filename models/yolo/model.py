@@ -1,8 +1,12 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+
+from models.yolo.tool.loss import Yolo_loss
 from .tool.torch_utils import *
 from .tool.yolo_layer import YoloLayer
+
+from ...config import Cfg as cfg
 
 
 class Mish(torch.nn.Module):
@@ -447,3 +451,19 @@ class Yolov4(nn.Module):
 
         output = self.head(x20, x13, x6)
         return output
+
+class YoloV4(nn.Module):
+    def __init__(self, num_classes, phase='train', pretrained=None, device='cpu'):
+        super(YoloV4, self).__init__()
+        self.phase = phase
+        self.net = Yolov4(pretrained, n_classes=num_classes, inference=False if phase == 'train' else True)
+        self.device = device
+        self.net.priors = self.net.priors.to(device)
+        self.loss = Yolo_loss(device=device, batch=cfg.batch_size, n_classes=num_classes)
+
+    def forward(self, input):
+        bboxes_pred = self.net(input)
+        if self.phase == 'train':
+            pass
+        else:
+            pass
