@@ -3,10 +3,12 @@ import os
 import time
 import math
 import numpy as np
+import torch
 
 import itertools
 import struct  # get_image_size
 import imghdr  # get_image_size
+from ....config import Cfg as cfg
 
 
 def sigmoid(x):
@@ -229,3 +231,12 @@ def post_processing(img, conf_thresh, nms_thresh, output):
     print('-----------------------------------')
 
     return bboxes_batch
+
+def get_boxes(targets):
+    boxes = [target['boxes'] for target in targets]
+    labels = [target['labels'] for target in targets]
+    new_boxes = torch.zeros(len(targets), cfg.boxes, 5)
+    for i in range(len(boxes)):
+        new_boxes[i, :boxes[i].shape[0], :4] = boxes[i]
+        new_boxes[i, :labels[i].shape[0], 4] = labels[i].float()
+    return torch.stack(new_boxes)

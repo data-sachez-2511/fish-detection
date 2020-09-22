@@ -26,3 +26,6 @@ Cfg.max_sizes = [60, 111, 162, 213, 264, 315]
 Cfg.aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2], [2]]
 Cfg.clip = True
 Cfg.name = 'VOC'
+
+# YoloV4
+Cfg.boxes = 20
